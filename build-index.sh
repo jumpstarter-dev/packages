@@ -65,5 +65,14 @@ done
 
 git checkout main
 
+message "-- Buinding the index --"
+
+for f in dist/*.whl dist/*.tar.gz; do basename "$f"; done > package-list.txt
+
+uvx dumb-pypi --package-list package-list.txt \
+              --packages-url https://pkg.jumpstarter.dev/ \
+              --output-dir dist/ \
+              --title "Jumpstarter Python Packages"
+
 message "✅ Build process completed"
 
