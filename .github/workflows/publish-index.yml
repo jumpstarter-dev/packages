@@ -1,0 +1,47 @@
+name: Generate Package Index
+
+on:
+  # Allows triggering this workflow from another repository
+  repository_dispatch:
+    types: [generate-index] # Define an event type
+  # Allows manual triggering from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy-index:
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout code (this repo, if needed for scripts/configs)
+        uses: actions/checkout@v4
+
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v1
+
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+
+      - name: Build the python index
+        run: ./build-index.sh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './jumpstarter/dist/' # Upload the directory containing the index
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
