@@ -20,15 +20,28 @@ cd jumpstarter
 # Clean previous build artifacts
 rm -rf dist
 
-EXCLUDED_TAGS="v0.0.0 v0.0.1 v0.0.2 v0.0.3 v0.5.0rc1 v0.5.0rc2 v0.7.0dev"
+EXCLUDED_TAGS="v0.0.0 v0.0.1 v0.0.2 v0.0.3 v0.5.0rc1 v0.5.0rc2"
 
 # Function to build for a given ref (tag or branch)
 build_ref() {
     ref=$1
+    out_dir=$2
     message "🛠️ Building for $ref"
     git checkout "$ref"
 
-    uv build --all --out-dir dist
+    uv build --all --out-dir "$out_dir"
+}
+
+build_index() {
+    dist_dir=$1
+    variant=$2
+    message "📦 Building index for ${dist_dir}/${variant}"
+    for f in "${dist_dir}/${variant}/files"/*.whl "${dist_dir}/${variant}/files"/*.tar.gz; do basename "$f"; done > "package-list-${variant}.txt"
+    cat "package-list-${variant}.txt"
+    uvx dumb-pypi --package-list "package-list-${variant}.txt" \
+                  --packages-url "https://pkg.jumpstarter.dev/${variant}/files" \
+                  --output-dir "${dist_dir}/${variant}" \
+                  --title "Jumpstarter Python Packages"
 }
 
 # Build for tags
@@ -43,15 +56,23 @@ git tag | while read tag; do
         fi
     done
 
+    # Exclude tags ending with "dev, those are only used as an anchor point for the main branch releases"
+    if echo "$tag" | grep -q "dev$"; then
+        is_excluded=1
+    fi
+
     if [ $is_excluded -eq 0 ]; then
-        build_ref "$tag"
+        build_ref "$tag" dist/files
     else
         warning "Skipping excluded tag: $tag"
     fi
 done
 
+build_index "dist" ""
+
 # Build for main branch
-build_ref "main"
+build_ref "main" "dist/main/files"
+build_index "dist" "main"
 
 # Build for release branches
 
@@ -59,20 +80,12 @@ build_ref "main"
 git fetch origin
 # List remote branches matching release-* and strip 'origin/' prefix
 git branch -r | grep 'origin/release-' | sed 's/origin\///' | while read branch; do
-    build_ref "$branch"
+    build_ref "${branch}" "dist/${branch}/files"
+    build_index "dist" "${branch}"
 done
-
 
 git checkout main
 
-message "-- Buinding the index --"
-
-for f in dist/*.whl dist/*.tar.gz; do basename "$f"; done > package-list.txt
-
-uvx dumb-pypi --package-list package-list.txt \
-              --packages-url https://pkg.jumpstarter.dev/ \
-              --output-dir dist/ \
-              --title "Jumpstarter Python Packages"
 
 message "✅ Build process completed"
 
