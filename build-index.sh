@@ -15,10 +15,10 @@ if [ ! -d "jumpstarter" ]; then
     git clone https://github.com/jumpstarter-dev/jumpstarter.git
 fi
 
-cd jumpstarter
-
 # Clean previous build artifacts
 rm -rf dist
+
+cd jumpstarter
 
 EXCLUDED_TAGS="v0.0.0 v0.0.1 v0.0.2 v0.0.3 v0.5.0rc1 v0.5.0rc2"
 
@@ -28,7 +28,7 @@ build_ref() {
     out_dir=$2
     message "🛠️ Building for $ref"
     git checkout "$ref"
-
+    git clean -f
     uv build --all --out-dir "$out_dir"
 }
 
@@ -62,17 +62,17 @@ git tag | while read tag; do
     fi
 
     if [ $is_excluded -eq 0 ]; then
-        build_ref "$tag" dist/files
+        build_ref "$tag" ../dist/files
     else
         warning "Skipping excluded tag: $tag"
     fi
 done
 
-build_index "dist" ""
+build_index "../dist" ""
 
 # Build for main branch
-build_ref "main" "dist/main/files"
-build_index "dist" "main"
+build_ref "main" "../dist/main/files"
+build_index "../dist" "main"
 
 # Build for release branches
 
@@ -80,8 +80,8 @@ build_index "dist" "main"
 git fetch origin
 # List remote branches matching release-* and strip 'origin/' prefix
 git branch -r | grep 'origin/release-' | sed 's/origin\///' | while read branch; do
-    build_ref "${branch}" "dist/${branch}/files"
-    build_index "dist" "${branch}"
+    build_ref "${branch}" "../dist/${branch}/files"
+    build_index "../dist" "${branch}"
 done
 
 git checkout main
