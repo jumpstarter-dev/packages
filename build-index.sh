@@ -28,7 +28,15 @@ build_ref() {
     out_dir=$2
     message "🛠️ Building for $ref"
     git checkout "$ref"
-    git clean -f
+    git clean -f -x # clean ignoring .gitignore rules
+    # for every directory in the packages/ directory, if it does not contain
+    # a pyproject.toml file, remove it, otherwise uv fails, this could
+    # be leftovers from previous branches that git clean does not remove
+    for dir in packages/*; do
+        if [ -d "$dir" ] && [ ! -f "$dir/pyproject.toml" ]; then
+            rm -rf "$dir"
+        fi
+    done
     uv build --all --out-dir "$out_dir"
 }
 
@@ -61,14 +69,26 @@ git tag | while read tag; do
         is_excluded=1
     fi
 
-    if [ $is_excluded -eq 0 ]; then
-        build_ref "$tag" ../dist/files
-    else
+    if [ $is_excluded -eq 1 ]; then
         warning "Skipping excluded tag: $tag"
+        continue
     fi
+
+    # Exclude tags matching the "v*rc*" pattern
+    if echo "$tag" | grep -q "v.*rc.*"; then
+        build_ref "$tag" "../dist/rc/files"
+        continue
+    fi
+
+
+    build_ref "$tag" ../dist/files
 done
 
+message "--- Index for releases ---"
 build_index "../dist" ""
+
+message "--- Index for release candidates ---"
+build_index "../dist" "rc"
 
 # Build for main branch
 build_ref "main" "../dist/main/files"
