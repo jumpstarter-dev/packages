@@ -64,8 +64,8 @@ git tag | while read tag; do
         fi
     done
 
-    # Exclude tags ending with "dev, those are only used as an anchor point for the main branch releases"
-    if echo "$tag" | grep -q "dev$"; then
+    # Exclude tags ending with "dev", "dev0", "dev123", etc. Those are just an anchor for the main branch releases 
+    if echo "$tag" | grep -qE "dev[0-9]*$"; then
         is_excluded=1
     fi
 
